@@ -1,0 +1,96 @@
+1. Persiapan di Linux Ubuntu
+
+# Update sistem
+sudo apt update && sudo apt upgrade -y
+
+# Install Docker
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker $USER
+
+# Logout dan login kembali, lalu verifikasi
+docker --version
+docker compose version
+2. Transfer File ke Linux
+Opsi A: Menggunakan Git (Recommended)
+
+
+# Di Linux, clone repository
+cd /opt
+sudo mkdir eticket && sudo chown $USER:$USER eticket
+git clone <your-repo-url> eticket
+cd eticket
+Opsi B: Menggunakan SCP
+
+
+# Di Windows (PowerShell), transfer files
+scp -r D:\AMZ_CKDO\eticket user@linux-server:/opt/eticket
+3. Buat File .env di Linux
+
+cd /opt/eticket
+nano .env
+Isi dengan:
+
+
+ORACLE_PASSWORD=your_oracle_password
+SECRET_KEY=your-production-secret-key-change-this
+4. Build & Jalankan
+
+cd /opt/eticket
+
+# Build dan jalankan
+docker compose up -d --build
+
+# Verifikasi
+docker compose ps
+docker compose logs -f
+5. Export/Import Database (Jika ada data)
+Di Windows:
+
+
+docker exec eticket-db pg_dump -U postgres eticket > eticket_backup.sql
+Transfer ke Linux:
+
+
+scp eticket_backup.sql user@linux-server:/opt/eticket/
+Di Linux:
+
+
+# Tunggu db container ready
+docker compose up -d db
+sleep 10
+
+# Import data
+docker exec -i eticket-db psql -U postgres -d eticket < eticket_backup.sql
+
+# Jalankan semua service
+docker compose up -d
+6. Verifikasi
+
+# Cek semua container running
+docker compose ps
+
+# Cek logs
+docker compose logs backend --tail 20
+docker compose logs frontend --tail 20
+
+# Test API
+curl http://localhost/api/health
+7. (Optional) Setup untuk Production
+Jika ingin menggunakan domain dan SSL:
+
+
+# Gunakan docker-compose.prod.yml
+docker compose -f docker-compose.prod.yml up -d --build
+Ringkasan Perintah:
+
+
+# Di Linux Ubuntu
+sudo apt update && curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker $USER
+# logout/login
+cd /opt && sudo mkdir eticket && sudo chown $USER:$USER eticket
+# transfer files via git clone atau scp
+cd eticket
+echo "ORACLE_PASSWORD=xxx" > .env
+docker compose up -d --build
+Apakah ada pertanyaan tentang langkah-langkah di atas?

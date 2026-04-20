@@ -1,0 +1,2 @@
+mkdir -p backend/uploads
+echo "" > backend/uploads/.gitkeep

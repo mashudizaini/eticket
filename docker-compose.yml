@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database (for transactions)
+  db:
+    image: postgres:15-alpine
+    container_name: eticket-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: eticket
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d
+    networks:
+      - eticket-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: eticket-backend
+    restart: unless-stopped
+    environment:
+      # PostgreSQL (transactions)
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/eticket
+      # Oracle EBS (user validation)
+      ORACLE_HOST: 172.21.2.201
+      ORACLE_PORT: 1521
+      ORACLE_SERVICE: PROD
+      ORACLE_USER: apps
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-}
+      # JWT & App
+      SECRET_KEY: dev-secret-key-change-in-production
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 60
+      DEBUG: "true"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - eticket-network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # React Frontend + Nginx
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: eticket-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - eticket-network
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  postgres_data:
+  uploads:
+
+networks:
+  eticket-network:
+    driver: bridge

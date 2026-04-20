@@ -1,0 +1,9 @@
+RewriteEngine On
+php_value memory_limit 20000M
+RewriteCond %{HTTPS} off
+RewriteCond %{http://172.21.2.157:8080/} \. [NC]
+RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [R,L]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?/$1

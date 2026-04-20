@@ -1,0 +1,135 @@
+PANDUAN MIGRASI E-TICKET KE LINUX UBUNTU
+STEP 1: Setup User & Group
+
+# Login sebagai root atau user dengan sudo
+sudo -i
+
+# Buat group aplikasi
+groupadd -g 1009 eticket
+
+# Buat user aplikasi
+useradd -u 1009 -g eticket -m -s /bin/bash -c "E-Ticket Application" eticket
+
+# Set password
+passwd eticket --sabar#2026
+
+# Buat directory struktur
+mkdir -p /opt/eticket/{app,data/postgres,data/uploads,data/ssl,logs}
+chown -R eticket:eticket /opt/eticket
+chmod 755 /opt/eticket
+STEP 2: Install Docker
+
+# Install Docker
+curl -fsSL https://get.docker.com | sh
+
+# Tambah user ke docker group
+usermod -aG docker eticket
+
+# Enable & start Docker
+systemctl enable docker
+systemctl start docker
+STEP 3: Transfer Files
+
+# Switch ke user eticket
+su - eticket
+cd /opt/eticket/app
+
+# OPSI A: Git Clone
+git clone <your-repo-url> .
+
+# OPSI B: SCP dari Windows (jalankan di Windows PowerShell)
+# scp -r D:\AMZ_CKDO\eticket\* eticket@SERVER_IP:/opt/eticket/app/
+STEP 4: Setup Environment
+
+cd /opt/eticket/app
+
+# Generate secret key
+SECRET=$(openssl rand -hex 32)
+echo "Generated SECRET_KEY: $SECRET"
+
+# Buat file .env
+cat > .env << EOF
+POSTGRES_PASSWORD=your_secure_pg_password
+ORACLE_HOST=172.21.2.201
+ORACLE_PORT=1521
+ORACLE_SERVICE=PROD
+ORACLE_USER=apps
+ORACLE_PASSWORD=your_oracle_password
+SECRET_KEY=$SECRET
+TZ=Asia/Jakarta
+EOF
+
+# Amankan file .env
+chmod 600 .env
+STEP 5: Export Database dari Windows
+
+# Di Windows (PowerShell), jalankan:
+docker exec eticket-db pg_dump -U postgres eticket > eticket_backup.sql
+
+# Transfer ke Linux:
+scp eticket_backup.sql eticket@SERVER_IP:/opt/eticket/app/
+STEP 6: Build & Run di Linux
+
+# Pastikan sudah di /opt/eticket/app sebagai user eticket
+cd /opt/eticket/app
+
+# Build containers
+docker compose -f docker-compose.prod.yml build
+
+# Start database dulu
+docker compose -f docker-compose.prod.yml up -d db
+sleep 10
+
+# Import data (jika ada backup)
+docker exec -i eticket-db psql -U postgres -d eticket < eticket_backup.sql
+
+# Start semua services
+docker compose -f docker-compose.prod.yml up -d
+STEP 7: Verifikasi
+
+# Cek status containers
+docker compose -f docker-compose.prod.yml ps
+
+# Cek logs
+docker compose -f docker-compose.prod.yml logs -f
+
+# Test API
+curl http://localhost/api/health
+
+# Test dengan browser
+# Akses http://SERVER_IP/
+STEP 8: (Optional) Setup Autostart
+
+# Buat systemd service (sebagai root)
+sudo tee /etc/systemd/system/eticket.service << EOF
+[Unit]
+Description=E-Ticket Application
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=eticket
+WorkingDirectory=/opt/eticket/app
+ExecStart=/usr/bin/docker compose -f docker-compose.prod.yml up -d
+ExecStop=/usr/bin/docker compose -f docker-compose.prod.yml down
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Enable service
+sudo systemctl daemon-reload
+sudo systemctl enable eticket
+QUICK REFERENCE
+Item	Value
+User	eticket
+Group	eticket
+App Directory	/opt/eticket/app
+Data Directory	/opt/eticket/data
+Logs	docker compose logs -f
+Start	docker compose -f docker-compose.prod.yml up -d
+Stop	docker compose -f docker-compose.prod.yml down
+Restart	docker compose -f docker-compose.prod.yml restart
+Apakah ada pertanyaan tentang langkah-langkah ini?
