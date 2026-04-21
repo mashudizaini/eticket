@@ -13,6 +13,7 @@ export function AuthProvider({ children }) {
     keycloak
       .init({
         onLoad: 'login-required',
+        checkLoginIframe: false,
       })
       .then((auth) => {
         if (auth) {
