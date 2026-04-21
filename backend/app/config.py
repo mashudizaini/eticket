@@ -13,7 +13,12 @@ class Settings(BaseSettings):
     ORACLE_USER: str = "apps"
     ORACLE_PASSWORD: str = ""  # Set in .env
 
-    # JWT
+    # Keycloak SSO
+    KEYCLOAK_URL: str = "http://dashboard-dev.ckd-otto.com/auth"
+    KEYCLOAK_REALM: str = "ckdo"
+    KEYCLOAK_CLIENT_ID: str = "ckdo-eticket"
+
+    # JWT (dipertahankan untuk kompatibilitas internal)
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60

@@ -1,19 +1,13 @@
-import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
+// Loading dan redirect ke Keycloak sudah ditangani di AuthProvider.
+// ProtectedRoute hanya perlu memastikan user sudah authenticated.
 export default function ProtectedRoute({ children }) {
-  const { token, loading } = useAuth()
+  const { authenticated } = useAuth()
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
-
-  if (!token) {
-    return <Navigate to="/login" replace />
+  if (!authenticated) {
+    // AuthProvider sudah memanggil keycloak.login() — render null sementara redirect
+    return null
   }
 
   return children

@@ -45,6 +45,10 @@ services:
       ORACLE_SERVICE: ${ORACLE_SERVICE:-PROD}
       ORACLE_USER: ${ORACLE_USER:-apps}
       ORACLE_PASSWORD: ${ORACLE_PASSWORD}
+      # Keycloak SSO
+      KEYCLOAK_URL: ${KEYCLOAK_URL:-http://dashboard-dev.ckd-otto.com/auth}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-ckdo}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-ckdo-eticket}
       # JWT & App
       SECRET_KEY: ${SECRET_KEY}
       ALGORITHM: HS256

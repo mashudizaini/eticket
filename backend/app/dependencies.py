@@ -1,65 +1,66 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-import jwt
-from jwt.exceptions import PyJWTError
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
-from app.database import get_db
-from app.config import get_settings
+from app.database import get_db, get_oracle_db
+from app.auth.keycloak import verify_token
+from app.services.user_sync import get_or_create_user
 
 security = HTTPBearer()
-settings = get_settings()
 
 
 @dataclass
 class CurrentUser:
-    """User data from JWT token"""
-    person_id: int
-    username: str
+    """User data yang tersedia di setiap request setelah SSO auth."""
+    person_id:       int
+    username:        str
     employee_number: str
-    team: str
+    team:            str
+    role:            str = "user"
+    full_name:       str = ""
+    keycloak_id:     str = ""
+    email:           str = ""
 
     @property
     def id(self):
         return self.person_id
 
     @property
-    def role(self):
-        return self.team or "USER"
-
-    @property
     def ope(self):
         return self.employee_number
+
+    def is_admin(self) -> bool:
+        return self.role == "admin"
+
+    def is_agent(self) -> bool:
+        return self.role in ("admin", "agent")
 
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
+    pg_db: Session = Depends(get_db),
+    oracle_db: Session = Depends(get_oracle_db),
 ) -> CurrentUser:
-    token = credentials.credentials
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        person_id = payload.get("sub")
-        username = payload.get("username")
-        employee_number = payload.get("employee_number")
-        team = payload.get("team")
+    """
+    FastAPI dependency — verifikasi Keycloak JWT dan sync user lokal.
 
-        if person_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token",
-            )
+    Flow:
+    1. Verifikasi token ke Keycloak JWKS (RS256)
+    2. Lookup/create user di PostgreSQL (linked ke Oracle EBS data)
+    3. Return CurrentUser dengan data lengkap
+    """
+    kc_user = verify_token(credentials.credentials)
+    user = get_or_create_user(kc_user, pg_db, oracle_db)
 
-        return CurrentUser(
-            person_id=int(person_id),
-            username=username,
-            employee_number=employee_number,
-            team=team or "USER",
-        )
-
-    except PyJWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-        )
+    return CurrentUser(
+        person_id       = user.person_id or 0,
+        username        = user.username or kc_user.username,
+        employee_number = user.employee_number or "",
+        team            = user.team or "USER",
+        role            = user.role or "user",
+        full_name       = user.full_name or kc_user.name or kc_user.username,
+        keycloak_id     = kc_user.id,
+        email           = user.email or kc_user.email or "",
+    )

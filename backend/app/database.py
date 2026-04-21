@@ -7,6 +7,10 @@ import platform
 
 from app.config import get_settings
 
+# Base untuk model Oracle (tidak di-create via SQLAlchemy — hanya referensi view)
+# Base untuk model PostgreSQL (di-create otomatis saat startup)
+PostgresBase = declarative_base()
+
 settings = get_settings()
 
 # Initialize Oracle Thick Mode for Oracle EBS compatibility

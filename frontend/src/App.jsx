@@ -3,11 +3,13 @@ import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
-import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Tickets from './pages/Tickets'
 import CreateTicket from './pages/CreateTicket'
 import TicketDetail from './pages/TicketDetail'
+
+// Login page dihapus — autentikasi sepenuhnya ditangani oleh Keycloak SSO.
+// AuthProvider akan redirect ke Keycloak jika belum ada session.
 
 function App() {
   return (
@@ -15,7 +17,6 @@ function App() {
       <BrowserRouter>
         <Toaster position="top-right" />
         <Routes>
-          <Route path="/login" element={<Login />} />
           <Route
             path="/"
             element={
