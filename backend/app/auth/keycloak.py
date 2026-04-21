@@ -59,9 +59,8 @@ def verify_token(token: str) -> KeycloakUser:
             token,
             jwks,
             algorithms=["RS256"],
-            audience="account",
             issuer=ISSUER,
-            options={"verify_exp": True, "verify_iss": True, "verify_aud": True},
+            options={"verify_exp": True, "verify_iss": True, "verify_aud": False},
         )
 
     try:

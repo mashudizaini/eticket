@@ -20,12 +20,12 @@ api.interceptors.request.use(async (config) => {
   return config
 })
 
-// Handle 401: token ditolak backend → force re-login via Keycloak
+// Handle 401: coba refresh token dulu, jangan langsung login() (bisa loop)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      keycloak.login()
+      keycloak.updateToken(-1).catch(() => keycloak.login())
     }
     return Promise.reject(error)
   }
