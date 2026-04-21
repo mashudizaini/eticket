@@ -12,13 +12,10 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     keycloak
       .init({
-        // check-sso: deteksi session Keycloak yang sudah ada (dari Dashboard)
-        // Jika session ada → auto-login tanpa tampilkan form login
-        // Jika tidak ada → redirect ke halaman login Keycloak
-        onLoad: 'check-sso',
+        // login-required: jika belum ada session → redirect ke Keycloak login
+        // Jika sudah ada session Keycloak (dari Dashboard) → auto-login langsung
+        onLoad: 'login-required',
         pkceMethod: 'S256',
-        checkLoginIframe: true,
-        silentCheckSsoRedirectUri: window.location.origin + '/silent-check-sso.html',
       })
       .then((auth) => {
         if (auth) {
