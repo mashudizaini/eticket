@@ -12,10 +12,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     keycloak
       .init({
-        // login-required: jika belum ada session → redirect ke Keycloak login
-        // Jika sudah ada session Keycloak (dari Dashboard) → auto-login langsung
         onLoad: 'login-required',
-        pkceMethod: 'S256',
       })
       .then((auth) => {
         if (auth) {
