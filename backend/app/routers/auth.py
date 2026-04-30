@@ -48,6 +48,13 @@ def login(credentials: UserLogin, db: Session = Depends(get_oracle_db)):
 
     except Exception as e:
         print(f"[ERROR] Database error: {e}")
+        err_str = str(e).lower()
+        # Deteksi timeout / koneksi gagal ke Oracle
+        if any(k in err_str for k in ["timeout", "connect", "tns", "ora-12", "ora-03"]):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Tidak dapat terhubung ke database Oracle. Silakan coba beberapa saat lagi.",
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Database error: {str(e)}",

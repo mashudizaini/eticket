@@ -241,6 +241,20 @@ Buka browser:
 
 ## BAGIAN 5 — Cara Update Aplikasi (Setelah Push dari Lokal)
 
+
+Push Project ke GitHub
+
+Jalankan di terminal lokal dari folder project:
+
+```bash
+git init
+git add .
+git commit -m "initial commit: eticket application"
+git branch -M main
+git remote add origin https://github.com/mashudizaini/eticket.git
+git push -u origin main
+
+
 Setiap kali ada perubahan code, lakukan di server:
 
 ```bash

@@ -87,7 +87,12 @@ def get_db():
 # ============================================
 # Oracle Database (for user validation)
 # ============================================
-oracle_engine = create_engine(settings.ORACLE_URL)
+oracle_engine = create_engine(
+    settings.ORACLE_URL,
+    connect_args={"tcp_connect_timeout": 10},  # timeout 10 detik jika Oracle tidak respond
+    pool_timeout=10,
+    pool_pre_ping=True,
+)
 OracleSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=oracle_engine)
 
 
