@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import oracledb
@@ -89,10 +89,15 @@ def get_db():
 # ============================================
 oracle_engine = create_engine(
     settings.ORACLE_URL,
-    connect_args={"tcp_connect_timeout": 10},  # timeout 10 detik jika Oracle tidak respond
-    pool_timeout=10,
+    pool_timeout=15,
     pool_pre_ping=True,
 )
+
+@event.listens_for(oracle_engine, "connect")
+def set_oracle_call_timeout(dbapi_connection, connection_record):
+    # Batas 30 detik per query — cegah login hang jika Oracle lambat
+    dbapi_connection.callTimeout = 30000
+
 OracleSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=oracle_engine)
 
 
