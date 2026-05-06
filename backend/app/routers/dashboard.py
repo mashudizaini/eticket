@@ -17,8 +17,9 @@ STATUS_RESOLVED = "resolved"
 STATUS_CLOSED = "closed"
 STATUS_CANCELLED = "cancelled"
 
-# Users who can see all tickets (by employee_number)
-ADMIN_USERS = ["system", "itsupport"]
+# Solver users who can see all tickets
+SOLVER_EMPLOYEE_NUMBERS = ["A24010", "A20001", "A25002"]  # Employee IDs
+SOLVER_USERNAMES = ["system", "itsupport", "itsupport@ckd-otto.com", "mashudi@ckd-otto.com", "usep@ckd-otto.com"]  # Usernames
 
 
 @router.get("/stats", response_model=DashboardStats)
@@ -32,21 +33,27 @@ def get_dashboard_stats(
 
     team = current_user.team
     requester = current_user.employee_number
+    username = current_user.username
     current_month = datetime.now().month
     current_year = datetime.now().year
 
-    print(f"[DEBUG] Dashboard stats - team: {team}, requester: {requester}")
+    print(f"[DEBUG] Dashboard stats - user: {username}, team: {team}, employee: {requester}")
 
     # Base query - filter by user's access
-    # ADMIN_USERS (system, itsupport) and ADM team can see all tickets
-    if requester in ADMIN_USERS:
-        base_filter = True
+    # Solver users (by username or employee_number) can see all tickets
+    from sqlalchemy import text
+    is_solver = username in SOLVER_USERNAMES or requester in SOLVER_EMPLOYEE_NUMBERS
+
+    if is_solver:
+        # Solver can see all tickets
+        base_filter = text("1=1")
     elif team == "USER":
         base_filter = Ticket.requester_name == requester
     elif team in ["IT", "ENG"]:
         base_filter = or_(Ticket.department == team, Ticket.requester_name == requester)
     else:
-        base_filter = True
+        # Default: see all (admin)
+        base_filter = text("1=1")
 
     # Count by status
     open_count = db.query(Ticket).filter(base_filter, Ticket.status == STATUS_NEW).count()

@@ -38,11 +38,11 @@ STATUS_RESOLVED = "resolved"
 STATUS_CLOSED = "closed"
 STATUS_CANCELLED = "cancelled"
 
-# Users who can see all tickets (by employee_number)
-ADMIN_USERS = ["system", "itsupport"]
+# Solver users who can see all tickets (by username)
+ADMIN_USERS = ["system", "itsupport", "itsupport@ckd-otto.com", "mashudi@ckd-otto.com", "usep@ckd-otto.com"]
 
-# Solver employees: can see all tickets and resolve/postpone/cancel
-# MASHUDI (A25002), HARDRYAN PRASETYO UTOMO (A24010), USEP HERMAWAN FAJAR (A20001)
+# Solver employees: can see all tickets and resolve/postpone/cancel (by employee_number)
+# MASHUDI (A24010), HARDRYAN PRASETYO UTOMO (A24010), USEP HERMAWAN FAJAR (A20001)
 SOLVER_EMPLOYEES = ["A25002", "A24010", "A20001"]
 
 # Teams allowed to resolve tickets
