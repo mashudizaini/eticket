@@ -100,6 +100,32 @@ def auto_close_stale_resolved_tickets(db: Session):
         db.commit()
 
 
+def apply_ticket_visibility_filter(query, current_user: CurrentUser, oracle_db: Session) -> any:
+    """Apply authorization filter berdasarkan user role/team.
+
+    Rules:
+    - Admin users & solver employees: lihat semua tickets
+    - IT/ENG/PLANT teams: lihat semua tickets (support team)
+    - User biasa: lihat hanya tickets yang mereka buat
+    """
+    team = current_user.team
+    requester = current_user.employee_number
+
+    is_admin = (
+        current_user.username.lower() in ADMIN_USERS
+        or requester.lower() in ADMIN_USERS
+        or requester in SOLVER_EMPLOYEES
+    )
+
+    if not is_admin:
+        if team == "USER":
+            # Regular user: hanya lihat tickets yang mereka buat
+            query = query.filter(Ticket.requester_name == requester)
+        # IT/ENG/PLANT teams: lihat semua tickets (no additional filter)
+
+    return query
+
+
 @router.get("/departments", response_model=List[DepartmentResponse])
 def get_departments():
     """Get list of departments (legacy)"""
@@ -143,39 +169,8 @@ def get_all_tickets(
     """Get all tickets"""
     auto_close_stale_resolved_tickets(db)
 
-    team = current_user.team
-    requester = current_user.employee_number
-
     query = db.query(Ticket)
-
-    # ADMIN_USERS (system, itsupport) and ADM team can see all tickets
-    is_admin = (
-        current_user.username.lower() in ADMIN_USERS
-        or requester.lower() in ADMIN_USERS
-        or requester in SOLVER_EMPLOYEES
-    )
-    if not is_admin:
-        if team == "USER":
-            query = query.filter(Ticket.requester_name == requester)
-        elif team in ["IT", "ENG", "PLANT"]:
-            user_team_id = None
-            try:
-                user_team_id = get_employee_team_id(oracle_db, requester)
-            except Exception as e:
-                print(f"Warning: Could not fetch team_id from Oracle: {e}")
-            if user_team_id:
-                query = query.filter(
-                    (Ticket.department == user_team_id) |
-                    (Ticket.team_id == user_team_id) |
-                    (Ticket.requester_name == requester)
-                )
-            else:
-                query = query.filter(
-                    (Ticket.department == team) |
-                    (Ticket.team_desc == team) |
-                    (Ticket.requester_name == requester)
-                )
-        # ADM sees all tickets
+    query = apply_ticket_visibility_filter(query, current_user, oracle_db)
 
     tickets = query.order_by(Ticket.created_at.desc()).all()
     return tickets
@@ -188,41 +183,11 @@ def get_open_tickets(
     current_user: CurrentUser = Depends(get_current_user),
 ):
     """Get open tickets (status: new, assigned, in_progress)"""
-    team = current_user.team
-    requester = current_user.employee_number
-
     query = db.query(Ticket).filter(
         Ticket.status.in_([STATUS_NEW, STATUS_ASSIGNED, STATUS_IN_PROGRESS, STATUS_PENDING])
     )
 
-    # ADMIN_USERS (system, itsupport) and ADM team can see all tickets
-    is_admin = (
-        current_user.username.lower() in ADMIN_USERS
-        or requester.lower() in ADMIN_USERS
-        or requester in SOLVER_EMPLOYEES
-    )
-    if not is_admin:
-        if team == "USER":
-            query = query.filter(Ticket.requester_name == requester)
-        elif team in ["IT", "ENG", "PLANT"]:
-            user_team_id = None
-            try:
-                user_team_id = get_employee_team_id(oracle_db, requester)
-            except Exception as e:
-                print(f"Warning: Could not fetch team_id from Oracle: {e}")
-            if user_team_id:
-                query = query.filter(
-                    (Ticket.department == user_team_id) |
-                    (Ticket.team_id == user_team_id) |
-                    (Ticket.requester_name == requester)
-                )
-            else:
-                query = query.filter(
-                    (Ticket.department == team) |
-                    (Ticket.team_desc == team) |
-                    (Ticket.requester_name == requester)
-                )
-        # ADM sees all tickets
+    query = apply_ticket_visibility_filter(query, current_user, oracle_db)
 
     tickets = query.order_by(Ticket.created_at.desc()).all()
     return tickets
@@ -235,41 +200,11 @@ def get_closed_tickets(
     current_user: CurrentUser = Depends(get_current_user),
 ):
     """Get closed tickets (status: resolved, closed, cancelled)"""
-    team = current_user.team
-    requester = current_user.employee_number
-
     query = db.query(Ticket).filter(
         Ticket.status.in_([STATUS_RESOLVED, STATUS_CLOSED, STATUS_CANCELLED])
     )
 
-    # ADMIN_USERS (system, itsupport) and ADM team can see all tickets
-    is_admin = (
-        current_user.username.lower() in ADMIN_USERS
-        or requester.lower() in ADMIN_USERS
-        or requester in SOLVER_EMPLOYEES
-    )
-    if not is_admin:
-        if team == "USER":
-            query = query.filter(Ticket.requester_name == requester)
-        elif team in ["IT", "ENG", "PLANT"]:
-            user_team_id = None
-            try:
-                user_team_id = get_employee_team_id(oracle_db, requester)
-            except Exception as e:
-                print(f"Warning: Could not fetch team_id from Oracle: {e}")
-            if user_team_id:
-                query = query.filter(
-                    (Ticket.department == user_team_id) |
-                    (Ticket.team_id == user_team_id) |
-                    (Ticket.requester_name == requester)
-                )
-            else:
-                query = query.filter(
-                    (Ticket.department == team) |
-                    (Ticket.team_desc == team) |
-                    (Ticket.requester_name == requester)
-                )
-        # ADM sees all tickets
+    query = apply_ticket_visibility_filter(query, current_user, oracle_db)
 
     tickets = query.order_by(Ticket.closed_at.desc().nullsfirst()).all()
     return tickets

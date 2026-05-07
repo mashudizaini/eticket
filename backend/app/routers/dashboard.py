@@ -49,8 +49,9 @@ def get_dashboard_stats(
         base_filter = text("1=1")
     elif team == "USER":
         base_filter = Ticket.requester_name == requester
-    elif team in ["IT", "ENG"]:
-        base_filter = or_(Ticket.department == team, Ticket.requester_name == requester)
+    elif team in ["IT", "ENG", "PLANT"]:
+        # Support teams can see all tickets
+        base_filter = text("1=1")
     else:
         # Default: see all (admin)
         base_filter = text("1=1")
@@ -169,14 +170,12 @@ def get_recent_tickets(
 
     query = db.query(Ticket)
 
-    # ADMIN_USERS (system, itsupport) and ADM team can see all tickets
-    if requester not in ADMIN_USERS:
+    # Support teams and solver users can see all tickets
+    is_solver = requester in SOLVER_EMPLOYEE_NUMBERS or current_user.username in SOLVER_USERNAMES
+    if not is_solver:
         if team == "USER":
             query = query.filter(Ticket.requester_name == requester)
-        elif team in ["IT", "ENG"]:
-            query = query.filter(
-                (Ticket.department == team) | (Ticket.requester_name == requester)
-            )
+        # IT/ENG/PLANT teams can see all tickets (no additional filter)
 
     tickets = query.order_by(Ticket.created_at.desc()).limit(limit).all()
 
